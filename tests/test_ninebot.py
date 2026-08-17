@@ -89,6 +89,21 @@ class NinebotTaskTests(unittest.TestCase):
         self.assertEqual(summary.status_for("盲盒检查"), "成功")
         self.assertEqual(len(session.calls), 3)
 
+    def test_share_failure_reports_http_status_business_code_and_message(self):
+        """删除业务码或接口提示后，失败日志必须不再满足此测试。"""
+        from ninebot import NinebotRunner, TaskConfig
+
+        session = FakeSession(
+            [
+                FakeResponse(200, {"code": 0}),
+                FakeResponse(200, {"code": 1001, "msg": "分享回调已失效"}),
+                FakeResponse(200, {"code": 0, "data": {"notOpenedBoxes": []}}),
+            ]
+        )
+        summary = NinebotRunner(TaskConfig("token", "device", json.dumps({"shareId": "x"})), session).run()
+
+        self.assertIn("HTTP 200；业务 code 1001；提示：分享回调已失效", summary.render())
+
     def test_share_success_claims_reward_before_blind_box_check(self):
         """删除领奖请求、使用错误任务 ID 或颠倒任务顺序时，此测试必须失败。"""
         from ninebot import NinebotRunner, TaskConfig

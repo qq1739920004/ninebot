@@ -103,9 +103,13 @@ class NinebotRunner:
 
     @staticmethod
     def _failure_detail(status_code: int, payload: dict) -> str:
-        if status_code != 200:
-            return f"HTTP 状态码 {status_code}"
-        return str(payload.get("msg") or payload.get("message") or "接口返回失败")
+        details = [f"HTTP {status_code}"]
+        if "code" in payload:
+            details.append(f"业务 code {payload['code']}")
+        message = payload.get("msg") or payload.get("message")
+        if message:
+            details.append(f"提示：{message}")
+        return "；".join(details)
 
     def _daily_sign(self) -> None:
         try:
