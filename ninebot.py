@@ -121,10 +121,17 @@ class NinebotRunner:
             )
             if status_code == 200 and payload.get("code") == 0:
                 self.summary.add("每日签到", "成功", str(payload.get("msg") or "签到成功"))
+            elif status_code == 200 and self._is_already_signed(payload):
+                self.summary.add("每日签到", "跳过", f"今日已签到：{payload.get('msg') or payload.get('message')}")
             else:
                 self.summary.add("每日签到", "失败", self._failure_detail(status_code, payload))
         except Exception as error:
             self.summary.add("每日签到", "失败", f"请求异常：{error}")
+
+    @staticmethod
+    def _is_already_signed(payload: dict) -> bool:
+        message = str(payload.get("msg") or payload.get("message") or "").lower()
+        return "already signed in" in message or "已签到" in message
 
     def _share_and_collect_reward(self) -> None:
         if not self.config.share_payload:

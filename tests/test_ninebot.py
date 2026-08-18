@@ -42,6 +42,21 @@ class NinebotTaskTests(unittest.TestCase):
         self.assertEqual(summary.status_for("盲盒检查"), "成功")
         self.assertEqual(len(session.calls), 2)
 
+    def test_run_marks_already_signed_in_as_skipped_instead_of_failed(self):
+        """把“已签到”业务提示继续标为失败时，此测试必须失败。"""
+        from ninebot import NinebotRunner, TaskConfig
+
+        session = FakeSession(
+            [
+                FakeResponse(200, {"code": 1001, "msg": "already signed in, cannot sign in again"}),
+                FakeResponse(200, {"code": 0, "data": {"notOpenedBoxes": []}}),
+            ]
+        )
+        summary = NinebotRunner(TaskConfig("token", "device", None), session).run()
+
+        self.assertEqual(summary.status_for("每日签到"), "跳过")
+        self.assertIn("今日已签到", summary.render())
+
     def test_run_receives_only_receivable_blind_box(self):
         """把可领取判断或 rewardId 请求写错时，此测试必须失败。"""
         from ninebot import NinebotRunner, TaskConfig
