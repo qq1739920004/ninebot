@@ -134,9 +134,28 @@ class NinebotTaskTests(unittest.TestCase):
         summary = NinebotRunner(TaskConfig("token", "device", json.dumps({"shareId": "x"})), session).run()
 
         self.assertEqual(summary.status_for("分享领奖"), "成功")
+        self.assertIn("分享回调成功；分享任务奖励领取成功", summary.render())
         self.assertEqual(session.calls[2][1], "https://cn-cbu-gateway.ninebot.com/portal/self-service/task/reward")
         self.assertEqual(session.calls[2][2]["json"], {"taskId": "1823622692036079618"})
         self.assertEqual(session.calls[3][0], "GET")
+
+    def test_share_callback_without_business_code_claims_reward(self):
+        """把 HTTP 200 的 r/s/v 分享回调当失败时，此测试必须失败。"""
+        from ninebot import NinebotRunner, TaskConfig
+
+        session = FakeSession(
+            [
+                FakeResponse(200, {"code": 0}),
+                FakeResponse(200, {"r": "result", "s": "signature", "v": "1"}),
+                FakeResponse(200, {"code": 0, "msg": "奖励领取成功"}),
+                FakeResponse(200, {"code": 0, "data": {"notOpenedBoxes": []}}),
+            ]
+        )
+        summary = NinebotRunner(TaskConfig("token", "device", json.dumps({"shareId": "x"})), session).run()
+
+        self.assertEqual(summary.status_for("分享领奖"), "成功")
+        self.assertIn("分享回调成功（HTTP 200，无业务 code）；奖励领取成功", summary.render())
+        self.assertEqual(session.calls[2][1], "https://cn-cbu-gateway.ninebot.com/portal/self-service/task/reward")
 
     def test_network_error_is_recorded_and_later_steps_run(self):
         """网络异常若使整个任务崩溃或阻止盲盒检查时，此测试必须失败。"""

@@ -151,9 +151,13 @@ class NinebotRunner:
                 "Accept": "application/json",
             }
             status_code, payload = self._request("POST", SHARE_URL, share_headers, json=share_payload)
-            if status_code != 200 or payload.get("code") != 0:
+            share_success = status_code == 200 and ("code" not in payload or payload.get("code") == 0)
+            if not share_success:
                 self.summary.add("分享领奖", "失败", f"分享失败：{self._failure_detail(status_code, payload)}")
                 return
+            share_detail = "分享回调成功"
+            if "code" not in payload:
+                share_detail = "分享回调成功（HTTP 200，无业务 code）"
 
             status_code, payload = self._request(
                 "POST",
@@ -162,7 +166,8 @@ class NinebotRunner:
                 json={"taskId": SHARE_REWARD_TASK_ID},
             )
             if status_code == 200 and payload.get("code") == 0:
-                self.summary.add("分享领奖", "成功", str(payload.get("msg") or "分享任务奖励领取成功"))
+                reward_detail = str(payload.get("msg") or "分享任务奖励领取成功")
+                self.summary.add("分享领奖", "成功", f"{share_detail}；{reward_detail}")
             else:
                 self.summary.add("分享领奖", "失败", f"领奖失败：{self._failure_detail(status_code, payload)}")
         except Exception as error:
